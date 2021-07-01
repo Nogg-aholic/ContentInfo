@@ -122,8 +122,6 @@ bool FNogs_RecipeMJ::TryAssignMJ(UContentInfoSubsystem* System)
 		else
 			return false;
 	}
-	
-	UE_LOG(LogTemp, Error, TEXT("Recursion on Recipe : %s sucessful Added Value %f"), *nRecipe->GetName(), Sum);
 	Recipe.MJ.AddValue(Sum);
 	for (auto n : Recipe.Products())
 	{
@@ -372,7 +370,7 @@ void FNogs_Descriptor::RecurseIngredients(TSubclassOf<class UFGItemDescriptor> I
 
 void UContentInfoSubsystem::CalculateCost(TArray<TSubclassOf<UFGRecipe>> RecipesToCalc)
 {
-	UE_LOG(LogTemp, Error, TEXT("******************** Content Info MJ Calculation %i Recipes to Calculate ********************"), RecipesToCalc.Num());
+	UE_LOG(LogTemp, Display, TEXT("******************** Content Info MJ Calculation %i Recipes to Calculate ********************"), RecipesToCalc.Num());
 	int32 CounterInside = 0;
 	for (auto Recipe : RecipesToCalc)
 	{
@@ -476,7 +474,7 @@ void UContentInfoSubsystem::PrintSortedRecipes()
 	SortPairs(Array_To_Sort_Keys,Array_To_Sort_Values);
 	for(int32 i = 0; i< Array_To_Sort_Keys.Num(); i++)
 	{
-		UE_LOG(LogTemp,Error,TEXT("Recipe: %s MJ: %f"), *Array_To_Sort_Keys[i]->GetName(),Array_To_Sort_Values[i]);
+		UE_LOG(LogTemp, Display,TEXT("Recipe: %s MJ: %f"), *Array_To_Sort_Keys[i]->GetName(),Array_To_Sort_Values[i]);
 	}
 }
 
@@ -495,7 +493,7 @@ void UContentInfoSubsystem::PrintSortedItems()
 	SortPairs(Array_To_Sort_Keys,Array_To_Sort_Values);
 	for(int32 i = 0; i< Array_To_Sort_Keys.Num(); i++)
 	{
-		UE_LOG(LogTemp,Error,TEXT("Item: %s MJ: %f"), *Array_To_Sort_Keys[i]->GetName(),Array_To_Sort_Values[i]);
+		UE_LOG(LogTemp,Display,TEXT("Item: %s MJ: %f"), *Array_To_Sort_Keys[i]->GetName(),Array_To_Sort_Values[i]);
 	}
 };
 
@@ -521,7 +519,7 @@ void UContentInfoSubsystem::FullRecipeCalculation()
 	}
 
 	// do a bunch of times to average them out
-	for(int32 i = 0 ; i < 100; i++)
+	for(int32 i = 0 ; i < 10; i++)
 		CalculateCost(NormalRecipes);
 	// once for generating , another time to average
 	for(int32 i = 0 ; i < 2; i++)
@@ -529,17 +527,17 @@ void UContentInfoSubsystem::FullRecipeCalculation()
 	CalculateCost(ManualOnly);
 	CalculateCost(BuildingRecipes);
 	
-	UE_LOG(LogTemp,Error,TEXT("-----------------------------------------------------"));
-	UE_LOG(LogTemp,Error,TEXT("___________________Results Recipes___________________"));
+	UE_LOG(LogTemp, Display,TEXT("-----------------------------------------------------"));
+	UE_LOG(LogTemp, Display,TEXT("___________________Results Recipes___________________"));
 
 	PrintSortedRecipes();
-	UE_LOG(LogTemp,Error,TEXT("_____________________________________________________"));
-	UE_LOG(LogTemp,Error,TEXT("-----------------------------------------------------"));
-	UE_LOG(LogTemp,Error,TEXT("____________________Results Items____________________"));
+	UE_LOG(LogTemp, Display,TEXT("_____________________________________________________"));
+	UE_LOG(LogTemp, Display,TEXT("-----------------------------------------------------"));
+	UE_LOG(LogTemp, Display,TEXT("____________________Results Items____________________"));
 
 	PrintSortedItems();
-	UE_LOG(LogTemp,Error,TEXT("_____________________________________________________"));
-	UE_LOG(LogTemp,Error,TEXT("-----------------------------------------------------"));
+	UE_LOG(LogTemp, Display,TEXT("_____________________________________________________"));
+	UE_LOG(LogTemp, Display,TEXT("-----------------------------------------------------"));
 }
 
 void UContentInfoSubsystem::ClientInit()
