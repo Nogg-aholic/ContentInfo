@@ -17,6 +17,58 @@ class UFGResearchTree;
 class UFGItemCategory;
 
 USTRUCT(BlueprintType)
+struct  CONTENTINFO_API  FNogs_ProductBuildingCost
+{
+	GENERATED_BODY()
+	FNogs_ProductBuildingCost();
+	FNogs_ProductBuildingCost(TSubclassOf<UFGRecipe> InRecipe,TSubclassOf<UObject> InBuilding);
+
+	float GetMjCost() const;
+
+	float GetMjCostForPotential(float Potential) const;
+	
+	UPROPERTY(BlueprintReadOnly)
+	TSubclassOf<UFGRecipe> Recipe;
+	UPROPERTY(BlueprintReadOnly)
+	TSubclassOf<UObject> Building;
+};
+
+USTRUCT(BlueprintType)
+struct  CONTENTINFO_API  FNogs_RecipeMJ
+{
+	
+	GENERATED_BODY()
+	friend struct FNogs_Recipe;
+	friend class UContentInfoSubsystem;
+	FNogs_RecipeMJ();
+	FNogs_RecipeMJ(TSubclassOf<UFGRecipe>  Outer);
+
+
+	bool HasAssignedMJ() const;
+	bool TryAssignMJ(UContentInfoSubsystem * System);
+
+	int32 GetItemAmount(TSubclassOf<UFGItemDescriptor> Item, bool Ingredient);
+	private:
+	bool CanCalculateMj(UContentInfoSubsystem * System) const;
+	float GetAverageBuildingCost(TArray<TSubclassOf<UObject>> Exclude)const;
+	void AddValue(const float Value);
+	public:
+	float GetProductMjValue(TSubclassOf<UFGItemDescriptor> Item,bool PerItem = true , TSubclassOf<UObject> Buildable = nullptr, bool ExcludeManual = true , float Potential = 1.f);
+
+	UPROPERTY(BlueprintReadOnly)
+	float MJValueOverride= -1.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	float MJ_Average = 0.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	TSubclassOf<UFGRecipe> nRecipe;
+};
+
+
+
+
+USTRUCT(BlueprintType)
 struct  CONTENTINFO_API  FNogs_Descriptor
 {
 	GENERATED_BODY()
@@ -25,8 +77,16 @@ struct  CONTENTINFO_API  FNogs_Descriptor
 	friend class UFGItemDescriptor;
 	FNogs_Descriptor();
 	FNogs_Descriptor(TSubclassOf< class UFGItemDescriptor > InClass);
-	FNogs_Descriptor(TSubclassOf< class UFGRecipe > Recipe, TSubclassOf< class UFGItemDescriptor > InClass);
 	FNogs_Descriptor(TSubclassOf< class UFGItemDescriptor > InClass,TSubclassOf< class UFGRecipe > Recipe);
+	float GetMj(FNogs_Recipe Recipe,TSubclassOf<UObject> Buildable = nullptr ) const;
+
+	static void RecurseIngredients(TSubclassOf<class UFGItemDescriptor> Item , TArray<TSubclassOf<class UFGItemDescriptor>> & AllItems , TArray<TSubclassOf<class UFGRecipe>> & AllRecipes ,UContentInfoSubsystem * System, bool SkipAlternate, TArray<TSubclassOf<class UFGRecipe>> Excluded, bool UseFirst = false);
+	static int32 CalculateDepth(UContentInfoSubsystem* System, TSubclassOf<UFGItemDescriptor> Item);
+
+	bool HasMj() const;
+	float AssignAverageMj(UContentInfoSubsystem * System,TArray<TSubclassOf<UFGRecipe>> Exclude = TArray<TSubclassOf<UFGRecipe>>(),TArray<TSubclassOf<UObject>> ExcludeBuilding = TArray<TSubclassOf<UObject>>());
+	
+	void AssignResourceValue();
 
 	UPROPERTY(BlueprintReadOnly)
 	TArray<TSubclassOf<class UFGRecipe>> ProductInRecipe;
@@ -35,15 +95,10 @@ struct  CONTENTINFO_API  FNogs_Descriptor
 	UPROPERTY(BlueprintReadOnly)
 	TSubclassOf< class UFGItemDescriptor > ItemClass;
 
-	int32 DepthToResourceClass;
+	void SetMj(float Value,bool Override = false);
 
-	TMap<int32,TArray<float>> DepthToResource;
 	UPROPERTY(BlueprintReadOnly)
-	float MJValue;
-	
-	// Only ResourceDesciptors have this 
-	UPROPERTY(BlueprintReadOnly)
-	float MJProduced;
+	float MJValue = -1.f;
 
 	~FNogs_Descriptor() = default;
 
@@ -54,15 +109,14 @@ struct  CONTENTINFO_API  FNogs_Schematic
 {
 	GENERATED_BODY()
 	public:
-	void DiscoverDependendies();
 	FNogs_Schematic();
-	FNogs_Schematic(TSubclassOf< class UFGSchematic > inClass, UObject * Context);
+	FNogs_Schematic(TSubclassOf< class UFGSchematic > inClass, UContentInfoSubsystem* System);
 
-	void DiscoverUnlocks();
+	void DiscoverUnlocks(UContentInfoSubsystem* System);
 	
 	private:
-	void DiscoverSchematics(UFGUnlockSchematic* Unlock) const;
-	void DiscoverRecipes(UFGUnlockRecipe* Unlock) const;
+	void DiscoverSchematics(UFGUnlockSchematic* Unlock,UContentInfoSubsystem* System) const;
+	void DiscoverRecipes(UFGUnlockRecipe* Unlock, UContentInfoSubsystem* System) const;
 	void GatherDependencies();
 	public:
 	UPROPERTY(BlueprintReadWrite)
@@ -86,8 +140,6 @@ struct  CONTENTINFO_API  FNogs_Schematic
 	UPROPERTY(BlueprintReadWrite)
 	int32 GuessedTier = 0;
 
-	
-	UObject * ContextObj;
 
 	~FNogs_Schematic() = default;
 };
@@ -100,11 +152,16 @@ struct  CONTENTINFO_API  FNogs_Recipe
 	FNogs_Recipe();
 	FNogs_Recipe(const TSubclassOf<UFGRecipe> Class, FNogs_Schematic Schematic);
 
-	void CalculateInfo();
+	void DiscoverMachines(UContentInfoSubsystem* System ) const;
+	void DiscoverItem(UContentInfoSubsystem* System ) const;
+	bool IsManualOnly() const;
+	bool IsManual() const;
 
+	TArray<float> GetIngredientsForProductRatio(TSubclassOf<UFGItemDescriptor> Item) const;
+	float GetItemToTotalProductRatio(TSubclassOf<UFGItemDescriptor> Item,UContentInfoSubsystem* System ) const;
 
-	void DiscoverMachines() const;
-	void DiscoverItem() const;
+	bool UnlockedFromAlternate();
+	bool IsBuildGunRecipe() const;
 
 	UPROPERTY(BlueprintReadWrite)
 	TArray<TSubclassOf<class UFGSchematic>> nUnlockedBy;
@@ -119,9 +176,11 @@ struct  CONTENTINFO_API  FNogs_Recipe
 
 	TArray<TSubclassOf<class UFGItemCategory>> IngredientCats() const;
 
-	TMap<int32, TArray<float>> IngredientToProductRatio;
+	UPROPERTY(BlueprintReadOnly)
+	FNogs_RecipeMJ MJ;
 
-	UObject * ContextObj;
+	UPROPERTY(BlueprintReadOnly)
+	FNogs_RecipeMJ MJ_Manual;
 
 	~FNogs_Recipe() = default;
 
@@ -137,24 +196,29 @@ class CONTENTINFO_API UContentInfoSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 
-	void CalculateCost();
+	void CalculateCost(TArray<TSubclassOf<UFGRecipe>> RecipesToCalc);
+	TMap<TSubclassOf<UFGItemDescriptor>,FNogs_Descriptor> CalculateRecipesRecursively(TSubclassOf<UFGItemDescriptor> Item, TArray<TSubclassOf<UFGRecipe>> Exclude,bool UseAlternates,UContentInfoSubsystem * System);
+	static void SortPairs(TArray<TSubclassOf<UObject>> & Array_To_Sort_Keys,TArray<float> & Array_To_Sort_Values,bool Descending = true);
 
+
+	void PrintSortedRecipes();
+	void PrintSortedItems();
+
+	void FullRecipeCalculation();
 	public:
 
 	UFUNCTION(BlueprintImplementableEvent)
     FNogs_Schematic HandleResearchTreeSchematic(TSubclassOf<UFGSchematic> Schematic, TSubclassOf<UFGResearchTree> Array );
-	
+
 	// Called when Content Registration has Finished
 	UFUNCTION(BlueprintCallable)
     void ClientInit();
 	
-	void CalculateDepth(FNogs_Descriptor& ItemObject);
-
 	UFUNCTION(BlueprintCallable)
 	FNogs_Schematic HandleSchematic(TSubclassOf<UFGSchematic> Schematic);
 
 	UFUNCTION(BlueprintCallable)
-		void AddToSchematicArrayProp(UPARAM(ref)FNogs_Schematic& Obj, TSubclassOf<UFGSchematic> Schematic, int32 Index);
+	static void AddToSchematicArrayProp(UPARAM(ref)FNogs_Schematic& Obj, TSubclassOf<UFGSchematic> Schematic, int32 Index);
 
 
 	UFUNCTION(BlueprintPure, Category="Info", meta=(WorldContext="WorldContextObject"))
